@@ -1,0 +1,13 @@
+model{
+for (i in 1:nr){  #loop from 1 no nrow
+y1[i] ~ dbin(t1[i],y2[i])
+logit(t1[i]) = a + b*x[i] + lmb*x[i]*x[i] #logit(pi) = α + βdi + λd2i
+}
+for(i in 1:nr)
+{
+res[i] ~ dbin(t1[i],y3) #result
+}
+a ~ dunif(-10,10)
+b ~ dunif(-10,10)
+lmb ~ dunif(-10,10)
+}

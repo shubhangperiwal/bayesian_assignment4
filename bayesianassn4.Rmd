@@ -1,0 +1,163 @@
+---
+title: "Bayesian Assignment 4"
+author: "Shubhang Periwal 19201104"
+date: "4/13/2020"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+
+
+
+```{r}
+library(rjags)
+dt = read.table("putting.dat", header = TRUE) # reading the data
+# a
+#success/tries
+plot(dt$dist, dt$Nsucc/dt$Ntrys)
+
+```
+
+
+
+```{r}
+# b
+modinput = list(nr = nrow(dt), y1 = dt$Nsucc, y2 = dt$Ntrys,y3 = 100, x = dt$dist)
+jmodel = jags.model(file = "model1.model", data = modinput)#reading model 1
+smp = coda.samples(jmodel, c("a", "b"), n.iter = 10000)#passing alpha, beta and values
+summary(smp)#summary of produced samples
+HPDinterval(smp[[1]], prob = 0.95)
+
+```
+95% HDR intervals do you get for α and β
+
+       lower      upper
+a  2.1190256  2.3437664
+b -0.2689385 -0.2432529
+
+```{r}
+# c
+dt = rbind(dt, c(25, 100, NA))  #for 
+modinput = list(nr = nrow(dt), y1 = dt$Nsucc, y2 = dt$Ntrys,y3 = 100 ,x = dt$dist)
+jmodel = jags.model(file = "model1.model", data = modinput)#passing data in model
+smp = coda.samples(jmodel, c("res"), n.iter = 10000)
+summary(smp)
+HPDinterval(smp[[1]], prob = 0.95)
+
+plot(dt$dist, dt$Nsucc * 100/dt$Ntrys, ylim = c(0, 100), col = "red",pch = 19)
+lines(dt$dist, HPDinterval(smp[[1]], prob = 0.95)[, 1], col = "green")
+lines(dt$dist, HPDinterval(smp[[1]], prob = 0.95)[, 2], col = "green")
+lines(dt$dist, summary(smp)$statistics[, 1], col = "darkblue")
+
+
+```
+
+```{r}
+# d
+#95 percent HDR interval 
+HPDinterval(smp[[1]], prob = 0.95)["res[20]", ]
+
+```
+The interval means that the probability makes sense, but many points are outside the 95% interval, 
+even though the interval values are big. So, we should try other models to fit this data. 
+
+
+```{r}
+# e
+
+modinput = list(nr = nrow(dt), y1 = dt$Nsucc, y2 = dt$Ntrys,y3 = 100, x = dt$dist)
+jmodel = jags.model(file = "model2.model", data = modinput)
+smp = coda.samples(jmodel, c("res"), n.iter = 10000)
+
+plot(dt$dist, dt$Nsucc * 100/dt$Ntrys, ylim = c(0, 100), col = "red",pch = 19)
+lines(dt$dist, HPDinterval(smp[[1]], prob = 0.95)[, 1], col = "green")
+lines(dt$dist, HPDinterval(smp[[1]], prob = 0.95)[, 2], col = "green")
+lines(dt$dist, summary(smp)$statistics[, 1], col = "darkblue")
+
+```
+This model seems a better fit than the previous model more points lie close to
+the curve, which means lower error rates. Bu the distance increase after
+prior reduces.
+
+
+```{r}
+#f
+#95% interval 
+HPDinterval(smp[[1]], prob = 0.95)["res[20]", ] #95% interval
+```
+
+```{r}
+#g
+modinput = list(nr = nrow(dt), y1 = dt$Nsucc, y2 = dt$Ntrys,y3 = 100,x = dt$dist )
+jmodel = jags.model(file = "model3.model", data = modinput)
+smp = coda.samples(jmodel, c("res"), n.iter = 10000)
+summary(smp)
+HPDinterval(smp[[1]], prob = 0.95)
+
+plot(dt$dist, dt$Nsucc * 100/dt$Ntrys, ylim = c(0, 100), col = "red",pch = 19)
+lines(dt$dist, HPDinterval(smp[[1]], prob = 0.95)[, 1], col = "green")
+lines(dt$dist, HPDinterval(smp[[1]], prob = 0.95)[, 2], col = "green")
+lines(dt$dist, summary(smp)$statistics[, 1], col = "darkblue")
+#95% interval 
+HPDinterval(smp[[1]], prob = 0.95)["res[20]", ] #95% interval
+
+```
+This model (loagrithmic) is a better fit than the previous 2 models based on the output curve. 
+The points are much closer and better explained by the model. With most of them within 
+the 95 % interval.
+```{r}
+#h
+in1 = list(a = 0.8, b = 1.3, .RNG.name = "base::Mersenne-Twister",.RNG.seed = 19201104)
+in2 = list(a = 1.5, b = 0.6, .RNG.name = "base::Mersenne-Twister",.RNG.seed = 19201104)
+#creating init with initialized alpha and beta
+jmodel1 = jags.model(file = "model1.model", data = modinput, n.chains = 2,inits = list(in1, in2))
+lin = dic.samples(jmodel1, 10000)
+jmodel2 = jags.model(file ="model2.model", data = modinput, n.chains = 2,inits = list(in1, in2))
+quad = dic.samples(jmodel2, 10000)
+jmodel3 = jags.model(file = "model3.model", data = modinput, n.chains = 2,inits = list(in1, in2))
+logarithm = dic.samples(jmodel3, 10000)
+print(lin)
+print(quad)
+print(logarithm)
+
+```
+DIC (deviance information criterion) helps us to choose a model, given multiple models. The lower value
+accounts for a better fit, with difference of more than 10 meaning a significant amount of difference to choose 
+one model over the other. 
+The first 2 models have higher deviance, making the linear model, as the worst and the logarithmic model
+as the best model. With reducing mean deviance and penalized deviance. 
+
+
+
+```{r}
+# i
+#creating inits usig multiple random number generators
+in1 = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 19201104)
+in2 = list(.RNG.name = "base::Marsaglia-Multicarry", .RNG.seed = 19201104)
+jmodel = jags.model(file = "model3.model", data = modinput, quiet = TRUE,n.chains = 2, inits = list(in1, in2))
+#passing inits so get non varying outputs
+smp = coda.samples(jmodel, c("a", "b"), n.iter = 10000)
+autocorr.plot(smp)
+gelman.plot(smp, ask = TRUE)
+effectiveSize(smp)
+gelman.diag(smp, multivariate = FALSE)
+dim(smp[[1]])
+
+jmodel = jags.model(file = "model3.model", data = modinput, quiet = TRUE,n.chains = 2, inits = list(in1, in2),n.adapt = 10000)
+csamples = coda.samples(jmodel, c("a", "b","res"), n.iter = 10000,thin = 25  )
+autocorr.plot(smp)# plotting autocorrelations
+gelman.diag(smp) #using to check conversions
+gelman.plot(smp)
+effectiveSize(smp)
+dim(csamples[[1]])
+
+
+```
+I executed 2 chains for check for convergence, we can clearly see that there is a high amount of autocorrelation
+atleast till the 30th lag. Even in the gelman plot we can see that there should be convergence which supports the
+autocorrelation plot. Effective values of alpha and beta are as follows: a        b 
+776.4089 791.3438 , we can see that there is no mixing and no convergence after thinning and adapting
+
+
+

@@ -1,0 +1,11 @@
+model{
+for (i in 1:nr){
+logit(p[i]) = a + b*log(x[i])
+y1[i] ~ dbin(p[i],y2[i])
+}
+for (i in 1:nr){
+res[i] ~ dbin(p[i],y3)
+}
+a ~ dunif(-10,10)
+b ~ dunif(-10,10)
+}

@@ -1,0 +1,10 @@
+model{
+for (i in 1:nr){
+y1[i] ~ dbin(t2[i],y2[i])
+logit(t2[i]) = a + b*x[i] #logit(pi) = α + βdi
+res[i] ~ dbin(t2[i],y3)   #storing result
+}
+
+a ~ dunif(-10,10)
+b ~ dunif(-10,10)
+}
